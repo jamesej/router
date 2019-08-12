@@ -162,11 +162,38 @@ let Router = props => (
     )}
   </BaseContext.Consumer>
 );
+Router.onPick = null;
 
-class RouterImpl extends React.PureComponent {
+class RouterImpl extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { match: null };
+  }
+
   static defaultProps = {
     primary: true
   };
+
+  componentDidMount() {
+    let { children, location, basepath } = this.props;
+    let routes = React.Children.map(children, createRoute(basepath));
+    pick(routes, location.pathname, Router.onPick).then(match =>
+      this.setState({ match })
+    );
+  }
+
+  shouldComponentUpdate(nextProps) {
+    let { children, location, basepath } = nextProps;
+    let nextPathname = location.pathname;
+    let { pathname } = this.props.location;
+    if (nextPathname !== pathname) {
+      let routes = React.Children.map(children, createRoute(basepath));
+      pick(routes, nextPathname, Router.onPick).then(match =>
+        this.setState({ match })
+      );
+    }
+    return true;
+  }
 
   render() {
     let {
@@ -179,18 +206,14 @@ class RouterImpl extends React.PureComponent {
       component = "div",
       ...domProps
     } = this.props;
-    let routes = React.Children.map(children, createRoute(basepath));
-    let { pathname } = location;
 
-    let match = pick(routes, pathname);
-
-    if (match) {
+    if (this.state.match) {
       let {
         params,
         uri,
         route,
         route: { value: element }
-      } = match;
+      } = this.state.match;
 
       // remove the /* from the end for child routes relative paths
       basepath = route.default ? basepath : route.path.replace(/\*$/, "");
@@ -238,7 +261,7 @@ class RouterImpl extends React.PureComponent {
       //   \n\tlet NotFound = () => <div>Not Found!</div>
       //   \n\t<Router>\n\t  <NotFound default/>\n\t  {/* ... */}\n\t</Router>`
       // );
-      return null;
+      return <React.Fragment />;
     }
   }
 }
@@ -469,7 +492,7 @@ let Match = ({ path, children }) => (
       <Location>
         {({ navigate, location }) => {
           let resolvedPath = resolve(path, baseuri);
-          let result = match(resolvedPath, location.pathname);
+          let result = match(resolvedPath, location.pathname, Router.onPick);
           return children({
             navigate,
             location,

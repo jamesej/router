@@ -27,7 +27,7 @@ let startsWith = (string, search) => {
 //     { route, params, uri }
 //
 // I know, I should use TypeScript not comments for these types.
-let pick = (routes, uri) => {
+let pick = async (routes, uri, onPick) => {
   let match;
   let default_;
 
@@ -107,7 +107,13 @@ let pick = (routes, uri) => {
         params,
         uri: "/" + uriSegments.slice(0, index).join("/")
       };
-      break;
+      if (onPick) {
+        match = await onPick(match);
+        if (match) break;
+        else missed = true;
+      } else {
+        break;
+      }
     }
   }
 
@@ -116,7 +122,7 @@ let pick = (routes, uri) => {
 
 ////////////////////////////////////////////////////////////////////////////////
 // match(path, uri) - Matches just one path to a uri, also lol
-let match = (path, uri) => pick([{ path }], uri);
+let match = (path, uri, onPick) => pick([{ path }], uri, onPick);
 
 ////////////////////////////////////////////////////////////////////////////////
 // resolve(to, basepath)
