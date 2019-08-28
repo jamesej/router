@@ -167,7 +167,7 @@ Router.onPick = null;
 class RouterImpl extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { match: null };
+    this.state = { match: null, setType: "normal" };
   }
 
   static defaultProps = {
@@ -177,22 +177,26 @@ class RouterImpl extends React.Component {
   componentDidMount() {
     let { children, location, basepath } = this.props;
     let routes = React.Children.map(children, createRoute(basepath));
-    pick(routes, location.pathname, Router.onPick).then(match =>
-      this.setState({ match })
-    );
+    pick(routes, location.pathname, Router.onPick).then(match => {
+      if (this.state.setType !== "match")
+        this.setState({ match, setType: "match" });
+    });
   }
 
-  shouldComponentUpdate(nextProps) {
-    let { children, location, basepath } = nextProps;
-    let nextPathname = location.pathname;
-    let { pathname } = this.props.location;
-    if (nextPathname !== pathname) {
-      let routes = React.Children.map(children, createRoute(basepath));
-      pick(routes, nextPathname, Router.onPick).then(match =>
-        this.setState({ match })
-      );
+  shouldComponentUpdate(nextProps, nextState) {
+    return !(this.state.setType === "match" && nextState.setType === "normal");
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    let { children, location, basepath } = this.props;
+    let routes = React.Children.map(children, createRoute(basepath));
+    if (this.state.setType !== "match" && prevState.setType !== "match") {
+      pick(routes, location.pathname, Router.onPick).then(match => {
+        this.setState({ match, setType: "match" });
+      });
+    } else if (this.state.setType === "match") {
+      this.setState({ setType: "normal" });
     }
-    return true;
   }
 
   render() {
